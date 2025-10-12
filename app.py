@@ -4,12 +4,23 @@ import chromadb # - Open source vector database
 from openai import OpenAI # - OpenAI API client
 from chromadb.utils import embedding_functions # - OpenAI Embedding Function
 
+# ================================
+# Initizalization
+# ================================
 
 # Load environment variables
 load_dotenv()
 
 # Get API Key from environment variables
 openai_api_key = os.getenv("OPENAI_API_KEY")
+
+# Check if API key is loaded and valid
+if not openai_api_key:
+    raise ValueError("OPENAI_API_KEY not found in environment variables. Please check your .env file.")
+elif not openai_api_key.startswith('sk-'):
+    raise ValueError(f"Invalid API key format. Expected to start with 'sk-', got: {openai_api_key[:10]}...")
+
+print(f"API Key loaded: {openai_api_key[:10]}...")
 
 # Embedding Function - Allows us to create embeddings for our text data
 openai_embedding_functions = embedding_functions.OpenAIEmbeddingFunction(
@@ -32,9 +43,9 @@ collection = chroma_client.get_or_create_collection(
     embedding_function=openai_embedding_functions
     )
 
-
-# Create OpenAI Client
-openai_client = OpenAI(api_key=openai_api_key)
+# ================================
+# Functions
+# ================================
 
 # Test the OpenAI Client
 def test_openai_client():
@@ -68,6 +79,21 @@ def split_text(text, chunk_size=1000, chunk_overlap=20):
         start = end - chunk_overlap
     return chunks
 
+# Function to create embeddings using OpenAI
+def create_embeddings(text):
+    response = openai_client.embeddings.create(
+        input=text,
+        model="text-embedding-3-small"
+    )
+    return response.data[0].embedding
+
+# ================================
+# Main Execution
+# ================================
+
+# Create OpenAI Client
+openai_client = OpenAI(api_key=openai_api_key)
+
 # Load documents from news_articles directory
 documents = load_documents("news_articles")
 print("Loaded documents: ", len(documents))
@@ -84,4 +110,12 @@ for document in documents:
             )
 # Print length of chunked documents
 # print("Length of chunked documents: ", len(chunked_documents))
+
+# Generate embeddings for chunked documents
+for document in chunked_documents:
+    # Logging the document text
+    print(f"Generating embeddings for document: {document['id']}")
+    document["embeddings"] = create_embeddings(document["text"])
+
+# print(document["embeddings"])
 
