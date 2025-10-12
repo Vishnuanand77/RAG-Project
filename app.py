@@ -37,12 +37,37 @@ collection = chroma_client.get_or_create_collection(
 openai_client = OpenAI(api_key=openai_api_key)
 
 # Test the OpenAI Client
-# response = openai_client.chat.completions.create(
-#     model="gpt-4o",
-#     messages=[
-#         {"role": "developer", "content": "Talk like a pirate."},
-#         {"role": "user", "content": "How do I check if a Python object is an instance of a class?"}
-#     ]
-# )
+def test_openai_client():
+    response = openai_client.chat.completions.create(
+        model="gpt-4o",
+        messages=[
+            {"role": "developer", "content": "Talk like a pirate."},
+            {"role": "user", "content": "How do I check if a Python object is an instance of a class?"}
+        ]
+    )
+    
+    print(response.choices[0].message.content)
 
-# print(response.choices[0].message.content)
+# Function to load documents from a directory
+def load_documents(directory):
+    documents = []
+    for filename in os.listdir(directory):
+        if filename.endswith('.txt'):
+            with open(os.path.join(directory, filename), "r", encoding="utf-8") as file:
+                documents.append({"id": filename, "text": file.read()})
+    return documents
+
+# Function to create chunks of documents, chunk size 1000, chunk overlap 20
+# We add overlap to preserve semantic specificity of the documents across chunks
+def split_text(text, chunk_size=1000, chunk_overlap=20):
+    chunks = []
+    start = 0
+    while start < len(text):
+        end = start + chunk_size
+        chunks.append(text[start:end])
+        start = end - chunk_overlap
+    return chunks
+
+# Load documents from news_articles directory
+documents = load_documents("news_articles")
+print("Loaded documents: ", len(documents))
