@@ -71,3 +71,17 @@ def split_text(text, chunk_size=1000, chunk_overlap=20):
 # Load documents from news_articles directory
 documents = load_documents("news_articles")
 print("Loaded documents: ", len(documents))
+
+# Split documents into chunks
+chunked_documents = []
+for document in documents:
+    chunks = split_text(document["text"])
+    print("Split document into chunks: ", len(chunks))
+    for i, chunk in enumerate(chunks):
+        chunked_documents.append({
+            "id": f"{document['id']}_chunk{i+1}", 
+            "text": chunk}
+            )
+# Print length of chunked documents
+# print("Length of chunked documents: ", len(chunked_documents))
+
