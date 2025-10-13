@@ -2,3 +2,5 @@
 .specstory
 venv/
 .gitignore
+.env
+.specstory/
