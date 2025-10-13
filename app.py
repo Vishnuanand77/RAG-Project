@@ -41,7 +41,12 @@ chroma_client = chromadb.PersistentClient(
 collection = chroma_client.get_or_create_collection(
     name="rag_collection",
     embedding_function=openai_embedding_functions
+    # Use cosine similarity instead of euclidean distance
+        # Cosine is better as it ignores the magnitude of the vectors and instead measure direction of the vectors
+        # Focuses more on the meaning instead of the exact wording
+    # metadata={"hnsw:space": "cosine"}
     )
+
 
 # ================================
 # Functions
@@ -119,3 +124,66 @@ for document in chunked_documents:
 
 # print(document["embeddings"])
 
+# Upsert chunked documents into ChromaDB for each chunk and its chunk embedding
+for document in chunked_documents:
+    collection.upsert(
+        ids=[document["id"]],
+        documents=[document["text"]],
+        embeddings=[document["embeddings"]]
+    )
+
+# Function to query the collection and extract relevant chunks
+# Print the similarity score of the query and the relevant chunks
+def query_collection(query):
+
+    # The query function performs the similarity search
+    # How it works:
+        # Query gets converted to a vector using the same embedding function as the documents
+        # ChromaDB calculates similarity between the query vector and the document vectors
+        # Documents are ranked by similarity score
+        # n_results is the number of documents to return (Default is 10)
+    # Since we are using "collection" it binds the embedding function to the query
+    results = collection.query(query_texts=[query], n_results=2)
+    
+    relevant_chunks = []
+    for i, (doc, score) in enumerate(zip(results["documents"][0], results["distances"][0])):
+        print(f"Chunk {i+1} Similarity Score: {score}")
+        print(f"Text: {doc}\n")
+        relevant_chunks.append(doc)
+    return relevant_chunks
+
+# Generate a response to the query
+# Use relevant chunks as context, create a prompt for the LLM, generate a response
+def generate_response(question, relevant_chunks):
+    context = "\n\n".join(relevant_chunks)
+    prompt = (
+        "You are an assistant for question-answering tasks. Use the following pieces of "
+        "retrieved context to answer the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the answer concise."
+        "\n\nContext:\n" + context + "\n\nQuestion:\n" + question
+    )
+
+    response = openai_client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": prompt,},
+            {"role": "user","content": question,},
+        ],
+    )
+
+    answer = response.choices[0].message
+    return answer
+
+
+# ================================
+# Example Usage
+# ================================
+
+# Query the collection
+question = "Tell me more about databricks"
+results = query_collection(question)
+print("Query results: ", results)
+
+# Generate a response to the query
+answer = generate_response(question, results)
+print(f"\n\nAnswer: ", answer.content)
