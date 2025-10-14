@@ -9,7 +9,7 @@ from langchain.text_splitter import (
 )
 
 import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction, OpenAIEmbeddingFunction
 
 # ================================
 # Helper Utils
@@ -94,17 +94,30 @@ for text in character_split_text:
 # print(word_wrap(token_split_texts[10]))
 print(f"\nTotal chunks using SentenceTransformersTokenTextSplitter: {len(token_split_text)}")
 
+# # Approach 1: Using SentenceTransformerEmbeddingFunction
+# embedding_function = SentenceTransformerEmbeddingFunction()
+# # print(embedding_function([token_split_texts[10]]))
 
-# Create a ChromaDB Client
+# chroma_client = chromadb.Client()
+# chroma_collection = chroma_client.create_collection(
+#     "advanced-rag-collection-sentence-transformer", embedding_function=embedding_function
+# )
+
+# # extract the embeddings of the token_split_texts
+# ids = [str(i) for i in range(len(token_split_text))]
+# chroma_collection.add(ids=ids, documents=token_split_text)
+# chroma_collection.count()
+
+# Approach 2: Using OpenAIEmbeddingFunction
+embedding_function = OpenAIEmbeddingFunction(api_key=openai_api_key)
+# print(embedding_function([token_split_texts[10]]))
+
 chroma_client = chromadb.Client()
-
-# Create a Collection
-collection = chroma_client.create_collection(
-    name="advanced_rag_collection",
-    embedding_function=SentenceTransformerEmbeddingFunction()
+chroma_collection = chroma_client.create_collection(
+    "advanced-rag-collection-openai", embedding_function=embedding_function
 )
 
-# Extract the embeddings of the token_split_text
+# extract the embeddings of the token_split_texts
 ids = [str(i) for i in range(len(token_split_text))]
 chroma_collection.add(ids=ids, documents=token_split_text)
 count = chroma_collection.count()
