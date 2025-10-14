@@ -8,9 +8,10 @@ from langchain.text_splitter import (
     SentenceTransformersTokenTextSplitter,
 )
 
-
 import chromadb
-from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction, OpenAIEmbeddingFunction
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
+
+from chromadb.utils import embedding_functions
 
 # ================================
 # Helper Utils
@@ -111,12 +112,15 @@ print(f"\nTotal chunks using SentenceTransformersTokenTextSplitter: {len(token_s
 # chroma_collection.count()
 
 # Approach 2: Using OpenAIEmbeddingFunction
-embedding_function = OpenAIEmbeddingFunction(api_key=openai_api_key)
-# print(embedding_function([token_split_texts[10]]))
+# Embedding Function - Allows us to create embeddings for our text data
+openai_embedding_function = embedding_functions.OpenAIEmbeddingFunction(
+    api_key=openai_api_key,
+    model_name="text-embedding-3-small"
+    )
 
 chroma_client = chromadb.Client()
 chroma_collection = chroma_client.create_collection(
-    "advanced-rag-collection-openai", embedding_function=embedding_function
+    "advanced-rag-collection-openai", embedding_function=openai_embedding_function
 )
 
 # extract the embeddings of the token_split_texts
