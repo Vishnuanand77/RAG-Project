@@ -4,3 +4,4 @@ venv/
 .gitignore
 .env
 .specstory/
+.venv_py311/
