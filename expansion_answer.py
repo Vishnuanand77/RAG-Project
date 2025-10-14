@@ -2,11 +2,12 @@ from pypdf import PdfReader
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-
+ 
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
     SentenceTransformersTokenTextSplitter,
 )
+
 
 import chromadb
 from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction, OpenAIEmbeddingFunction
@@ -94,12 +95,6 @@ for text in character_split_text:
 # print(word_wrap(token_split_texts[10]))
 print(f"\nTotal chunks using SentenceTransformersTokenTextSplitter: {len(token_split_text)}")
 
-# Use openai text splitter
-openai_token_splitter = OpenAITokenTextSplitter(api_key=openai_api_key)
-openai_split_text = []
-for text in character_split_text:
-    openai_split_text += openai_token_splitter.split_text(text)
-print(f"\nTotal chunks using OpenAITokenTextSplitter: {len(openai_split_text)}")
 
 # # Approach 1: Using SentenceTransformerEmbeddingFunction
 # embedding_function = SentenceTransformerEmbeddingFunction()
@@ -125,7 +120,7 @@ chroma_collection = chroma_client.create_collection(
 )
 
 # extract the embeddings of the token_split_texts
-ids = [str(i) for i in range(len(openai_split_text))]
-chroma_collection.add(ids=ids, documents=openai_split_text)
+ids = [str(i) for i in range(len(token_split_text))]
+chroma_collection.add(ids=ids, documents=token_split_text)
 count = chroma_collection.count()
 print(f"Total chunks in the collection: {count}")
