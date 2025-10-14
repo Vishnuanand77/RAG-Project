@@ -1,5 +1,6 @@
 .env
-.specstory
+.specstory/
+.__pycache__/
 venv/
 .gitignore
 .env
