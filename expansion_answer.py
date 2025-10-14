@@ -1,5 +1,3 @@
-
-from helper_utils import word_wrap
 from pypdf import PdfReader
 import os
 from openai import OpenAI
@@ -9,6 +7,9 @@ from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
     SentenceTransformersTokenTextSplitter,
 )
+
+import chromadb
+from chromadb.utils.embedding_functions import SentenceTransformerEmbeddingFunction
 
 # ================================
 # Helper Utils
@@ -92,3 +93,19 @@ for text in character_split_text:
 
 # print(word_wrap(token_split_texts[10]))
 print(f"\nTotal chunks using SentenceTransformersTokenTextSplitter: {len(token_split_text)}")
+
+
+# Create a ChromaDB Client
+chroma_client = chromadb.Client()
+
+# Create a Collection
+collection = chroma_client.create_collection(
+    name="advanced_rag_collection",
+    embedding_function=SentenceTransformerEmbeddingFunction()
+)
+
+# Extract the embeddings of the token_split_text
+ids = [str(i) for i in range(len(token_split_text))]
+chroma_collection.add(ids=ids, documents=token_split_text)
+count = chroma_collection.count()
+print(f"Total chunks in the collection: {count}")
