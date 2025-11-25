@@ -209,7 +209,7 @@ print(f"\n\nAnswer: ", answer.content)
 
 # Ensure reference_answer and answer.content are strings
 candidate = answer.content
-reference = "Databricks acquired Okera, an AI-centric data governance platform, to address the growing complexity of managing sensitive data in the era of large language models. Okera adds automatic PII discovery, metadata-based policy tagging, and isolation technology that enforces governance across arbitrary workloads, which Databricks plans to integrate into Unity Catalog. The acquisition also brings Okera co-founder Nong Li, creator of Apache Parquet, back to Databricks."
+reference= "Databricks recently acquired Okera, a data governance platform with a focus on AI. They did not disclose the purchase price. Recently, Okera had raised just under $30 million from investors. Databricks emphasizes the importance of modern, AI governance solutions due to the growing volume, velocity, and variety of data across different applications."
 
 print("\n\nEvaluation Metrics:\n")
 
