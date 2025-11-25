@@ -4,6 +4,12 @@ import chromadb # - Open source vector database
 from openai import OpenAI # - OpenAI API client
 from chromadb.utils import embedding_functions # - OpenAI Embedding Function
 
+# To calculate BLEU and ROUGE scores, we'll use external libraries: nltk for BLEU and rouge_score for ROUGE.
+# For precision, recall, and F1, we'll use sklearn's classification_report utilities for a simple token-level metric.
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from rouge_score import rouge_scorer
+from sklearn.metrics import precision_recall_fscore_support
+
 # ================================
 # Initizalization
 # ================================
@@ -180,10 +186,48 @@ def generate_response(question, relevant_chunks):
 # ================================
 
 # Query the collection
-question = "Tell me more about databricks"
+question = "Tell me about databricks"
 results = query_collection(question)
 print("Query results: ", results)
 
 # Generate a response to the query
 answer = generate_response(question, results)
 print(f"\n\nAnswer: ", answer.content)
+
+# ================================
+# Evaluation
+# ================================
+
+# Evaluate the response using RAG Evaluation Metrics - BLEU Score, ROUGE Score, Precision, Recall, F1 Score
+# BLEU Score - Measures the similarity between the generated response and the reference answer
+# ROUGE Score - Measures the similarity between the generated response and the reference answer
+# Precision - Measures the precision of the generated response
+# Recall - Measures the recall of the generated response
+# F1 Score - Measures the F1 score of the generated response
+
+# Ensure reference_answer and answer.content are strings
+candidate = answer.content
+reference = "Databricks has acquired Okera, an AI-centric data governance platform, to strengthen its ability to manage and secure data and AI assets at scale, particularly as the rise of large language models accelerates the creation of machine-generated data and exposes the limits of traditional, centralized governance controls. Okera provides AI-powered automatic discovery and classification of sensitive information, metadata-driven policy tagging, and an isolation technology that can enforce governance on arbitrary workloads with minimal overhead—capabilities that Databricks plans to integrate directly into its Unity Catalog to enhance unified governance across clouds and workloads. The acquisition also brings Okera co-founder and CEO Nong Li—creator of Apache Parquet and former Databricks engineer—back to the company, as Databricks aims to offer modern governance APIs and support enterprises that struggle to manage access policies amid rapidly growing data volume, velocity, and LLM-driven complexity."
+
+# BLEU Score calculation (using unigram BLEU for simplicity)
+smooth = SmoothingFunction().method1
+bleu = sentence_bleu([reference.split()], candidate.split(), smoothing_function=smooth)
+print(f"BLEU Score: {bleu}")
+
+# ROUGE Score calculation (ROUGE-1 and ROUGE-L)
+scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
+rouge_scores = scorer.score(reference, candidate)
+print(f"ROUGE-1 Score: {rouge_scores['rouge1'].fmeasure}")
+print(f"ROUGE-L Score: {rouge_scores['rougeL'].fmeasure}")
+
+# Token-level Precision, Recall, F1 (based on overlap of unique tokens)
+ref_tokens = set(reference.lower().split())
+cand_tokens = set(candidate.lower().split())
+true_positives = len(ref_tokens & cand_tokens)
+precision_score = true_positives / (len(cand_tokens) if len(cand_tokens) > 0 else 1)
+recall_score = true_positives / (len(ref_tokens) if len(ref_tokens) > 0 else 1)
+f1 = 2 * precision_score * recall_score / (precision_score + recall_score) if (precision_score + recall_score) else 0
+
+print(f"Precision: {precision_score}")
+print(f"Recall: {recall_score}")
+print(f"F1 Score: {f1}")
