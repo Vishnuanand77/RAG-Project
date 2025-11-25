@@ -6,9 +6,11 @@ from chromadb.utils import embedding_functions # - OpenAI Embedding Function
 
 # To calculate BLEU and ROUGE scores, we'll use external libraries: nltk for BLEU and rouge_score for ROUGE.
 # For precision, recall, and F1, we'll use sklearn's classification_report utilities for a simple token-level metric.
+from collections import Counter
+import numpy as np
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from rouge_score import rouge_scorer
-from sklearn.metrics import precision_recall_fscore_support
+from bert_score import score as bert_score
 
 # ================================
 # Initizalization
@@ -207,11 +209,18 @@ print(f"\n\nAnswer: ", answer.content)
 
 # Ensure reference_answer and answer.content are strings
 candidate = answer.content
-reference = "Databricks has acquired Okera, an AI-centric data governance platform, to strengthen its ability to manage and secure data and AI assets at scale, particularly as the rise of large language models accelerates the creation of machine-generated data and exposes the limits of traditional, centralized governance controls. Okera provides AI-powered automatic discovery and classification of sensitive information, metadata-driven policy tagging, and an isolation technology that can enforce governance on arbitrary workloads with minimal overhead—capabilities that Databricks plans to integrate directly into its Unity Catalog to enhance unified governance across clouds and workloads. The acquisition also brings Okera co-founder and CEO Nong Li—creator of Apache Parquet and former Databricks engineer—back to the company, as Databricks aims to offer modern governance APIs and support enterprises that struggle to manage access policies amid rapidly growing data volume, velocity, and LLM-driven complexity."
+reference = "Databricks acquired Okera, an AI-centric data governance platform, to address the growing complexity of managing sensitive data in the era of large language models. Okera adds automatic PII discovery, metadata-based policy tagging, and isolation technology that enforces governance across arbitrary workloads, which Databricks plans to integrate into Unity Catalog. The acquisition also brings Okera co-founder Nong Li, creator of Apache Parquet, back to Databricks."
 
-# BLEU Score calculation (using unigram BLEU for simplicity)
+print("\n\nEvaluation Metrics:\n")
+
+# BLEU Score calculation (using 4-gram BLEU)
 smooth = SmoothingFunction().method1
-bleu = sentence_bleu([reference.split()], candidate.split(), smoothing_function=smooth)
+bleu = sentence_bleu(
+    [reference.split()],
+    candidate.split(),
+    weights=(0.25, 0.25, 0.25, 0.25),
+    smoothing_function=smooth
+)
 print(f"BLEU Score: {bleu}")
 
 # ROUGE Score calculation (ROUGE-1 and ROUGE-L)
@@ -220,14 +229,42 @@ rouge_scores = scorer.score(reference, candidate)
 print(f"ROUGE-1 Score: {rouge_scores['rouge1'].fmeasure}")
 print(f"ROUGE-L Score: {rouge_scores['rougeL'].fmeasure}")
 
-# Token-level Precision, Recall, F1 (based on overlap of unique tokens)
-ref_tokens = set(reference.lower().split())
-cand_tokens = set(candidate.lower().split())
-true_positives = len(ref_tokens & cand_tokens)
-precision_score = true_positives / (len(cand_tokens) if len(cand_tokens) > 0 else 1)
-recall_score = true_positives / (len(ref_tokens) if len(ref_tokens) > 0 else 1)
-f1 = 2 * precision_score * recall_score / (precision_score + recall_score) if (precision_score + recall_score) else 0
+# Token-level Precision, Recall, F1 (counting token occurrences)
+ref_tokens = reference.lower().split()
+cand_tokens = candidate.lower().split()
+ref_counts = Counter(ref_tokens)
+cand_counts = Counter(cand_tokens)
+true_positive_tokens = sum((ref_counts & cand_counts).values())
+precision_score = true_positive_tokens / len(cand_tokens) if cand_tokens else 0.0
+recall_score = true_positive_tokens / len(ref_tokens) if ref_tokens else 0.0
+f1 = (
+    2 * precision_score * recall_score / (precision_score + recall_score)
+    if (precision_score + recall_score) > 0
+    else 0.0
+)
 
 print(f"Precision: {precision_score}")
 print(f"Recall: {recall_score}")
 print(f"F1 Score: {f1}")
+
+# BERTScore (semantic similarity)
+# bert_p, bert_r, bert_f1 = bert_score(
+#     [candidate],
+#     [reference],
+#     lang="en",
+#     rescale_with_baseline=True
+# )
+# print(f"BERTScore Precision: {bert_p.item()}")
+# print(f"BERTScore Recall: {bert_r.item()}")
+# print(f"BERTScore F1: {bert_f1.item()}")
+
+# Cosine similarity between embeddings
+reference_embedding = np.array(openai_embedding_functions([reference])[0])
+candidate_embedding = np.array(openai_embedding_functions([candidate])[0])
+denominator = np.linalg.norm(reference_embedding) * np.linalg.norm(candidate_embedding)
+cosine_similarity = (
+    float(np.dot(reference_embedding, candidate_embedding) / denominator)
+    if denominator > 0
+    else 0.0
+)
+print(f"Cosine Similarity: {cosine_similarity}")
