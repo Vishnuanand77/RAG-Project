@@ -5,4 +5,4 @@
 .env
 .specstory/
 .venv_py311/
-venv/
+venv/chroma_db/
