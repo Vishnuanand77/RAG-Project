@@ -1,0 +1,13 @@
+bert-score
+chromadb
+langchain
+matplotlib
+nltk
+numpy
+openai
+pypdf
+python-dotenv
+rouge-score
+sentence-transformers
+umap-learn
+
