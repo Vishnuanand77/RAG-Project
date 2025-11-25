@@ -168,6 +168,29 @@ def augment_query_generated(query, model="gpt-3.5-turbo"):
     content = response.choices[0].message.content
     return content
 
+# # Generate a response to the query
+# Use relevant chunks as context, create a prompt for the LLM, generate a response
+def generate_response(question, relevant_chunks):
+    context = "\n\n".join(relevant_chunks)
+    prompt = (
+        "You are an assistant for question-answering tasks. Use the following pieces of "
+        "retrieved context to answer the question. If you don't know the answer, say that you "
+        "don't know. Use three sentences maximum and keep the answer concise."
+        "\n\nContext:\n" + context + "\n\nQuestion:\n" + question
+    )
+
+    response = openai_client.chat.completions.create(
+        model="gpt-3.5-turbo",
+        messages=[
+            {"role": "system", "content": prompt,},
+            {"role": "user","content": question,},
+        ],
+    )
+
+    answer = response.choices[0].message
+    return answer
+
+
 # Query expansion using augment_query_generated
 original_query = "What was the total profit for the year, and how does it compare to the previous year?"
 hypothetical_answer = augment_query_generated(original_query)
@@ -183,68 +206,10 @@ results = chroma_collection.query(
 
 retrieved_documents = results["documents"][0]
 
-#  # Get embedding from chroma db
-# embeddings = chroma_collection.get(include=["embeddings"])["embeddings"]
-# print(f"✅ Successfully retrieved {len(embeddings)} embeddings from ChromaDB")
+ # Get embedding from chroma db
+embeddings = chroma_collection.get(include=["embeddings"])["embeddings"]
+print(f" Successfully retrieved {len(embeddings)} embeddings from ChromaDB")
 
-# # Skip UMAP computation to avoid segmentation fault
-# print("⚠️  Skipping UMAP computation to avoid segmentation fault")
-# # umap_transform = umap.UMAP(random_state=0, transform_seed=0).fit(embeddings)
-# # projected_dataset_embeddings = project_embeddings(embeddings, umap_transform)
-
-# # I am trying to compare the embeddings of the original query, the augmented query, and the retrieved documents
-# retrieved_embeddings = results["embeddings"][0]
-# original_query_embedding = openai_embedding_function([original_query])
-# augmented_query_embedding = openai_embedding_function([joint_query])
-
-# # Skip UMAP projections to avoid segmentation fault
-# print("⚠️  Skipping UMAP projections to avoid segmentation fault")
-# print("✅ Script completed successfully! SentenceTransformersTokenTextSplitter is working perfectly.")
-# print(f"📊 Retrieved {len(retrieved_documents)} documents for query: '{original_query}'")
-
-# # projected_original_query_embedding = project_embeddings(
-# #     original_query_embedding, umap_transform
-# # )
-# # projected_augmented_query_embedding = project_embeddings(
-# #     augmented_query_embedding, umap_transform
-# # )
-# # projected_retrieved_embeddings = project_embeddings(
-# #     retrieved_embeddings, umap_transform
-# # )
-
-
-# # # Plot the projected query and retrieved documents in the embedding space
-# # plt.figure()
-
-# # plt.scatter(
-# #     projected_dataset_embeddings[:, 0],
-# #     projected_dataset_embeddings[:, 1],
-# #     s=10,
-# #     color="gray",
-# # )
-# # plt.scatter(
-# #     projected_retrieved_embeddings[:, 0],
-# #     projected_retrieved_embeddings[:, 1],
-# #     s=100,
-# #     facecolors="none",
-# #     edgecolors="g",
-# # )
-# # plt.scatter(
-# #     projected_original_query_embedding[:, 0],
-# #     projected_original_query_embedding[:, 1],
-# #     s=150,
-# #     marker="X",
-# #     color="r",
-# # )
-# # plt.scatter(
-# #     projected_augmented_query_embedding[:, 0],
-# #     projected_augmented_query_embedding[:, 1],
-# #     s=150,
-# #     marker="X",
-# #     color="orange",
-# # )
-
-# # plt.gca().set_aspect("equal", "datalim")
-# # plt.title(f"{original_query}")
-# # plt.axis("off")
-# # plt.show()  # display the plot
+# Generate a response to the query
+answer = generate_response(joint_query, retrieved_documents)
+print(f"\n\nAnswer: ", answer.content)
