@@ -1,0 +1,11 @@
+bert-score
+chromadb
+langchain
+langchain-community
+langchain-core
+langchain-openai
+nltk
+numpy
+python-dotenv
+rouge-score
+
