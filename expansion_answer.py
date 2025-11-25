@@ -1,8 +1,13 @@
+from collections import Counter
 from pypdf import PdfReader
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
- 
+import numpy as np
+from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
+from rouge_score import rouge_scorer
+from bert_score import score as bert_score
+
 from langchain.text_splitter import (
     RecursiveCharacterTextSplitter,
     SentenceTransformersTokenTextSplitter,
@@ -213,3 +218,122 @@ print(f" Successfully retrieved {len(embeddings)} embeddings from ChromaDB")
 # Generate a response to the query
 answer = generate_response(joint_query, retrieved_documents)
 print(f"\n\nAnswer: ", answer.content)
+
+# ================================
+# Evaluation Metrics
+# ================================
+
+candidate = answer.content
+reference = hypothetical_answer  # Using generated hypothetical answer as reference baseline
+
+print("\n\nEvaluation Metrics:\n")
+
+"""
+BLEU Score calculation (using 4-gram BLEU):
+    - Compares 4-gram overlap between the reference and the candidate with smoothing to avoid zero scores.
+    - Range: {0.0, 1.0}
+        0 - Completely different
+        1 - Identical
+
+Limitations:
+    - Does not consider semantic similarity but instead focuses on the exact wording.
+    - Very sensitive to word choice and order.
+    - Useful for machine translations.
+"""
+smooth = SmoothingFunction().method1
+bleu = sentence_bleu(
+    [reference.split()],
+    candidate.split(),
+    weights=(0.25, 0.25, 0.25, 0.25),
+    smoothing_function=smooth
+)
+bleu_percentage = bleu * 100
+print(f"BLEU Score: {bleu_percentage:.2f}%")
+
+"""
+ROUGE (Recall-Oriented Understudy for Gisting Evaluation) Score calculation (ROUGE-1 and ROUGE-L)
+    - ROUGE-1: Counts unigram overlap.
+    - ROUGE-L: Measures the longest common subsequence.
+    - Range: {0.0, 1.0}
+        0 - Completely different
+        1 - Identical
+Limitations:
+    - Ignores semantic similarity but instead focuses on the exact wording.
+    - Slightly better than BLEU as ROUGE-L accounts for matching fragments but have different meanings.
+"""
+scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
+rouge_scores = scorer.score(reference, candidate)
+print(f"ROUGE-1 Score: {rouge_scores['rouge1'].fmeasure}")
+print(f"ROUGE-L Score: {rouge_scores['rougeL'].fmeasure}")
+
+""" 
+Token-level Precision, Recall, F1 (counting token occurrences)
+    - Precision: Measures the proportion of correctly identified tokens.
+    - Recall: Measures the proportion of correctly identified tokens.
+    - F1 Score: Measures the F1 score of the generated response.
+    - Range: {0.0, 1.0}
+        0 - Completely different
+        1 - Identical
+Limitations:
+    - Ignores semantic similarity but instead focuses on the exact wording.
+"""
+ref_tokens = reference.lower().split()
+cand_tokens = candidate.lower().split()
+ref_counts = Counter(ref_tokens)
+cand_counts = Counter(cand_tokens)
+true_positive_tokens = sum((ref_counts & cand_counts).values())
+precision_score = true_positive_tokens / len(cand_tokens) if cand_tokens else 0.0
+recall_score = true_positive_tokens / len(ref_tokens) if ref_tokens else 0.0
+f1 = (
+    2 * precision_score * recall_score / (precision_score + recall_score)
+    if (precision_score + recall_score) > 0
+    else 0.0
+)
+
+print(f"Precision: {precision_score}")
+print(f"Recall: {recall_score}")
+print(f"F1 Score: {f1}")
+
+"""
+BERTScore (semantic similarity)
+    - BERTScore is a semantic similarity metric that uses the BERT model to score the similarity between the reference and the candidate.
+    - Each token gets a contextual embedding from BERT and then the cosine similarity is calculated between the reference and the candidate.
+    - It outputs precision, recall, and F1 score.
+    - Range: {-1.0, 1.0}
+        -1 - Completely different
+        1 - Identical
+    - Captures paraphrases and synonyms better than BLEU and ROUGE.
+    
+    Limitations:
+        - Can be slower than other metrics.
+        - Requires a lot of computational resources with larger datasets.
+"""
+bert_p, bert_r, bert_f1 = bert_score(
+    [candidate],
+    [reference],
+    lang="en",
+    rescale_with_baseline=True
+)
+print(f"BERTScore Precision: {bert_p.item()}")
+print(f"BERTScore Recall: {bert_r.item()}")
+print(f"BERTScore F1: {bert_f1.item()}")
+
+""" Cosine similarity between embeddings
+    - Measures the cosine of the angle between two vectors.
+    - Range: {-1.0, 1.0}
+        -1 - Completely different
+        0 - Neutral
+        1 - Identical
+Limitations:
+    - High score does not necessarily mean high factual accuracy but it is a good measure of semantic similarity.
+"""
+reference_embedding = np.array(openai_embedding_function([reference])[0])
+candidate_embedding = np.array(openai_embedding_function([candidate])[0])
+denominator = np.linalg.norm(reference_embedding) * np.linalg.norm(candidate_embedding)
+cosine_similarity = (
+    float(np.dot(reference_embedding, candidate_embedding) / denominator)
+    if denominator > 0
+    else 0.0
+)
+print(f"Cosine Similarity: {cosine_similarity}")
+
