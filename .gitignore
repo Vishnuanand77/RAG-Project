@@ -5,4 +5,6 @@
 .env
 .specstory/
 .venv_py311/
-venv/chroma_db/
+venv/
+chroma_db/
+.cursorindexingignore
